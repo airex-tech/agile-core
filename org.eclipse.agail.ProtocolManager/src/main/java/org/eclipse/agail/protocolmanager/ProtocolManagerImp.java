@@ -69,6 +69,11 @@ public class ProtocolManagerImp extends AbstractAgileObject implements ProtocolM
 	 * Dummy Protocol Agile ID 
 	 */
 	public static final String DUMMY_PROTOCOL_ID = "org.eclipse.agail.protocol.Dummy";
+
+	/**
+	 * LoRa Protocol Agile ID 
+	 */
+	public static final String LORA_PROTOCOL_ID = "org.eclipse.agail.protocol.LoRa";
 	
 	/**
 	 * List of supported protocols
@@ -86,8 +91,9 @@ public class ProtocolManagerImp extends AbstractAgileObject implements ProtocolM
 		ProtocolManager protocolManager = new ProtocolManagerImp();
 
 		// for demo purposes
-		protocolManager.Add(BLE_PROTOCOL_ID);
+		// protocolManager.Add(BLE_PROTOCOL_ID);
 		protocolManager.Add(DUMMY_PROTOCOL_ID);
+		protocolManager.Add(LORA_PROTOCOL_ID);
  	}
 
 	public ProtocolManagerImp() throws DBusException {
@@ -278,6 +284,9 @@ public class ProtocolManagerImp extends AbstractAgileObject implements ProtocolM
 			case DUMMY_PROTOCOL_ID:
 				_protocolOverview = new ProtocolOverview("Dummy", "Dummy", protocolIDFullpath, "Available");
 			    break;
+			case LORA_PROTOCOL_ID:
+				_protocolOverview = new ProtocolOverview("LoRa", "LoRa/MQTT", protocolIDFullpath, "Available");
+				break;
             default:
               // TODO check classpath?
             	_protocolOverview = new ProtocolOverview(protocolId,protocolId,protocolIDFullpath, "Available");
