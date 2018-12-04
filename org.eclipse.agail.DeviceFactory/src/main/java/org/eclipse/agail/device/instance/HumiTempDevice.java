@@ -8,7 +8,7 @@
  * SPDX-License-Identifier: EPL-2.0
  * 
  * Contributors:
- *     Create-Net / FBK - initial API and implementation
+ *	 Create-Net / FBK - initial API and implementation
  ******************************************************************************/
 package org.eclipse.agail.device.instance;
 
@@ -51,8 +51,8 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
  
 
  	static {
-		sensors.put(Temperature, new SensorUuid("00002010-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
-		sensors.put(Humidity, new SensorUuid("00002010-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
+		sensors.put(Temperature, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
+		sensors.put(Humidity, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
 	}
 
 	public static boolean Matches(DeviceOverview d) {
@@ -84,97 +84,97 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 	}
 
 
-  @Override
-  protected String DeviceRead(String componentName) {
-	logger.info("HumiTemp DeviceRead: "+ componentName);
-    if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
-      if (isConnected()) {
-        if (isSensorSupported(componentName.trim())) {
-          try {
-            byte[] result = deviceProtocol.Read(address, getReadValueProfile(componentName));
-            return formatReading(componentName, result);
-          } catch (DBusException e) {
-            e.printStackTrace();
-          }
-        } else {
-          throw new AgileNoResultException("Sensor not supported:" + componentName);
-        }
-      } else {
-        throw new AgileNoResultException("BLE Device not connected: " + deviceName);
-      }
-    } else {
-      throw new AgileNoResultException("Protocol not supported: " + protocol);
-    }
-    throw new AgileNoResultException("Unable to read "+componentName);
-  }
+	@Override
+	protected String DeviceRead(String componentName) {
+		logger.info("HumiTemp DeviceRead: "+ componentName);
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+				if (isSensorSupported(componentName.trim())) {
+					try {
+						byte[] result = deviceProtocol.Read(address, getReadValueProfile(componentName));
+						return formatReading(componentName, result);
+					} catch (DBusException e) {
+					e.printStackTrace();
+				}
+			} else {
+				throw new AgileNoResultException("Sensor not supported:" + componentName);
+			}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
+		throw new AgileNoResultException("Unable to read "+componentName);
+	}
 
 	
- @Override
-  public synchronized void Subscribe(String componentName) {
-    if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
-      if (isConnected()) {
-        if (isSensorSupported(componentName.trim())) {
-          try {
-            if (!hasOtherActiveSubscription(componentName)) {
-              deviceProtocol.Subscribe(address, getReadValueProfile(componentName));
-              addNewRecordSignalHandler();
-            }
-	    logger.info("HumiTemp Subscribe");
-            subscribedComponents.put(componentName, subscribedComponents.get(componentName) + 1);
-          } catch (Exception e) {
-            e.printStackTrace();
-          }
-        } else {
-          throw new AgileNoResultException("Sensor not supported:" + componentName);
-        }
-      } else {
-        throw new AgileNoResultException("BLE Device not connected: " + deviceName);
-      }
-    } else {
-      throw new AgileNoResultException("Protocol not supported: " + protocol);
-    }
-  }
+	@Override
+	public synchronized void Subscribe(String componentName) {
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+				if (isSensorSupported(componentName.trim())) {
+					try {
+						if (!hasOtherActiveSubscription(componentName)) {
+							deviceProtocol.Subscribe(address, getReadValueProfile(componentName));
+							addNewRecordSignalHandler();
+						}
+						logger.info("HumiTemp Subscribe");
+						subscribedComponents.put(componentName, subscribedComponents.get(componentName) + 1);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				} else {
+					throw new AgileNoResultException("Sensor not supported:" + componentName);
+				}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
+	}
 
- @Override
-  public synchronized void Unsubscribe(String componentName) throws DBusException {
-    if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
-      if (isConnected()) {
-        if (isSensorSupported(componentName.trim())) {
-          try {
-            subscribedComponents.put(componentName, subscribedComponents.get(componentName) - 1);
-            if (!hasOtherActiveSubscription(componentName)) {
-              deviceProtocol.Unsubscribe(address, getReadValueProfile(componentName));
-              removeNewRecordSignalHandler();
-            }
-          } catch (Exception e) {
-            e.printStackTrace();
-          }
-        } else {
-          throw new AgileNoResultException("Sensor not supported:" + componentName);
-        }
-      } else {
-        throw new AgileNoResultException("BLE Device not connected: " + deviceName);
-      }
-    } else {
-      throw new AgileNoResultException("Protocol not supported: " + protocol);
-    }
-  }
-  
-@Override
-  public void Write(String componentName, String payload) {
-            logger.debug("Device. Write not implemented");
+	@Override
+	public synchronized void Unsubscribe(String componentName) throws DBusException {
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+				if (isSensorSupported(componentName.trim())) {
+					try {
+						subscribedComponents.put(componentName, subscribedComponents.get(componentName) - 1);
+						if (!hasOtherActiveSubscription(componentName)) {
+							deviceProtocol.Unsubscribe(address, getReadValueProfile(componentName));
+							removeNewRecordSignalHandler();
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				} else {
+					throw new AgileNoResultException("Sensor not supported:" + componentName);
+				}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
 	}
-  
-@Override
-  public void Execute(String command) {
-            logger.debug("Device. Execute not implemented");
+
+	@Override
+	public void Write(String componentName, String payload) {
+		logger.debug("Device. Write not implemented");
 	}
-  
-  @Override
-  public List<String> Commands(){
-            logger.debug("Device. Commands not implemented");
-            return null;
-      }
+
+	@Override
+	public void Execute(String command) {
+		logger.debug("Device. Execute not implemented");
+	}
+
+	@Override
+	public List<String> Commands(){
+		logger.debug("Device. Commands not implemented");
+		return null;
+	}
 
 	// =======================Utility methods===========================
 
@@ -195,8 +195,6 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 		return sensors.containsKey(sensorName);
 	}
 
-
-
 	/**
 	 * Checks if there is another active subscription on the given component of
 	 * the device
@@ -216,42 +214,14 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 
 	@Override
 	protected String formatReading(String componentName, byte[] readData) {
-			int resultX = 0;
-			int resultY = 0;
-			int resultZ = 0;
-			String value = "";
+		String value = "";
 		switch (componentName) {
-   		   case Acc:
-			resultX =   (readData[1] << 8) | readData[0];
-			resultY =   (readData[3] << 8) | readData[2];
-			resultZ =   (readData[5] << 8) | readData[4];
-			value = "["+Integer.toString(resultX)+","+Integer.toString(resultY)+","+Integer.toString(resultZ)+"]";
-			return value;
-		   case Gyro:
-			resultX =   (readData[1] << 8) | readData[0];
-			resultY =   (readData[3] << 8) | readData[2];
-			resultZ =   (readData[5] << 8) | readData[4];
-			value = "["+Integer.toString(resultX)+","+Integer.toString(resultY)+","+Integer.toString(resultZ)+"]";
-			return value;
-		   case Magnetometer:
-			resultX =  (readData[1] << 8) | readData[0];
-			resultY =  (readData[3] << 8) | readData[2];
-			resultZ =  (readData[5] << 8) | readData[4];
-			value = "["+Integer.toString(resultX)+","+Integer.toString(resultY)+","+Integer.toString(resultZ)+"]";
-			return value;
-		   case AmbientLight:
-			value = Integer.toString(readData[0]);
-			return value;
-		   case Temperature:
-		   case Humidity:
-		   case Pressure:	
-			value = Integer.toString((readData[1] << 8 | readData[0]) /100);
-			return value;
-		   case Heartrate:
-		   case Steps: 
-		   case Calories:
-			value = Integer.toString(readData[0]);
-			return value;	
+			case Temperature:
+				value = Float.toString(Math.pow(-1, readData[0] + 2) * (readData[1]  + readData[2] / 10.0));
+				return value;
+			case Humidity:	
+				value = Float.toString(readData[4] + readData[5] / 10.0);
+				return value;
 		}
 		return "0";
 	}
@@ -326,15 +296,15 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
    * @param uuid
    * @return
    */
-  @Override
-  protected String getComponentName(Map<String, String> profile) {
-    String serviceUUID = profile.get(GATT_SERVICE);
-    String charValueUuid = profile.get(GATT_CHARACTERSTICS);
-    for (Entry<String, SensorUuid> su : sensors.entrySet()) {
-      if (su.getValue().serviceUuid.equals(serviceUUID) && su.getValue().charValueUuid.equals(charValueUuid)) {
-        return su.getKey();
-      }
-    }
-    return null;
-  }
+	@Override
+	protected String getComponentName(Map<String, String> profile) {
+		String serviceUUID = profile.get(GATT_SERVICE);
+		String charValueUuid = profile.get(GATT_CHARACTERSTICS);
+		for (Entry<String, SensorUuid> su : sensors.entrySet()) {
+			if (su.getValue().serviceUuid.equals(serviceUUID) && su.getValue().charValueUuid.equals(charValueUuid)) {
+				return su.getKey();
+			}
+		}
+		return null;
+	}
 }
