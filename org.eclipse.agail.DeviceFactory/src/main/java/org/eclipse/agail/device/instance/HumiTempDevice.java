@@ -217,10 +217,10 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 		String value = "";
 		switch (componentName) {
 			case Temperature:
-				value = Float.toString(Math.pow(-1, readData[0] + 2) * (readData[1]  + readData[2] / 10.0));
+				value = Double.toString(Math.pow(-1, readData[0] + 2) * (readData[1]  + readData[2] / 10.0));
 				return value;
 			case Humidity:	
-				value = Float.toString(readData[4] + readData[5] / 10.0);
+				value = Double.toString(readData[4] + readData[5] / 10.0);
 				return value;
 		}
 		return "0";
