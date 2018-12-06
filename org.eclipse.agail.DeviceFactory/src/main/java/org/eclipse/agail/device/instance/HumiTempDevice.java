@@ -94,11 +94,11 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 						byte[] result = deviceProtocol.Read(address, getReadValueProfile(componentName));
 						return formatReading(componentName, result);
 					} catch (DBusException e) {
-					e.printStackTrace();
+						e.printStackTrace();
+					}
+				} else {
+					throw new AgileNoResultException("Sensor not supported:" + componentName);
 				}
-			} else {
-				throw new AgileNoResultException("Sensor not supported:" + componentName);
-			}
 			} else {
 				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
 			}
