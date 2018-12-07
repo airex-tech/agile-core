@@ -56,10 +56,10 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 	}
 
 	public static boolean Matches(DeviceOverview d) {
-		return d.name.contains("HUMITEMP");
+		return d.name.contains("HumiTemp Sensor Tag");
 	}
 
-	public static String deviceTypeName = "HUMITEMP";
+	public static String deviceTypeName = "HumiTemp Sensor Tag";
 
 	public HumiTempDevice(DeviceOverview deviceOverview) throws DBusException {
 		super(deviceOverview);
