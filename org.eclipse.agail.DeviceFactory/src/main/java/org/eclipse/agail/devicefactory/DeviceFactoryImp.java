@@ -131,11 +131,10 @@ public class DeviceFactoryImp extends AbstractAgileObject implements DeviceFacto
             }
   		  
         
-        
         logger.debug("Getting files from"+ADDCLASS_DIR);
         
         //Load all files from the addition directory
-        if(ADDCLASS_DIR!=null)
+        if (false) // if(ADDCLASS_DIR!=null)
         {   
             
             filePath = new File(ADDCLASS_DIR+"/"+DEVICE_CLASSPATH);
