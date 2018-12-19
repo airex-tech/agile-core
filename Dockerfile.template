@@ -32,8 +32,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     cmake-data \
     pkg-config \
     clang \
-    gcc-4.9 \
-    g++-4.9 \
+    gcc \
+    g++ \
     qdbus \
     wget \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -46,10 +46,14 @@ RUN sudo apt-get update \
 # Set JAVA_HOME to whatever the install dir is
 ENV JAVA_HOME /usr/lib/jvm/default-java
 
+# Check java versions, want 1.8
+RUN javac -version && java -version && ls -al /usr/lib/jvm/
+
 # resin-sync will always sync to /usr/src/app, so code needs to be here.
 WORKDIR /usr/src/app
 ENV APATH /usr/src/app
 
+RUN rm -rf /Library/Java/Extensions
 COPY scripts scripts
 COPY agile-dbus-java-interface agile-dbus-java-interface
 RUN CC=clang CXX=clang++ CMAKE_C_COMPILER=clang CMAKE_CXX_COMPILER=clang++ \
