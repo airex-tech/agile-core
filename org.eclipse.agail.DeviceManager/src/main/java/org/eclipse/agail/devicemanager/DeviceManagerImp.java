@@ -118,7 +118,7 @@ public class DeviceManagerImp extends AbstractAgileObject implements DeviceManag
 			logger.info("Device already registered:  {}", device.Id());
 		} else {
 			try {
-				logger.info("HEXIWEAR - Checking device type: " + deviceType + " and overview " + deviceOverview);
+				logger.info("Register - Checking device type: " + deviceType + " and overview " + deviceOverview);
 
 				String objectName = "org.eclipse.agail.DeviceFactory";
 				String objectPath = "/org/eclipse/agail/DeviceFactory";
