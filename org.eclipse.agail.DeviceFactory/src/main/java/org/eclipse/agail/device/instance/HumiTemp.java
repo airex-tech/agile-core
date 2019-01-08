@@ -8,51 +8,47 @@
  * SPDX-License-Identifier: EPL-2.0
  * 
  * Contributors:
- *	 Create-Net / FBK - initial API and implementation
+ *     Create-Net / FBK - initial API and implementation
  ******************************************************************************/
 package org.eclipse.agail.device.instance;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.freedesktop.dbus.DBusSigHandler;
-import org.freedesktop.dbus.exceptions.DBusException;
+
 import org.eclipse.agail.Device;
-import org.eclipse.agail.Protocol;
-import org.eclipse.agail.Protocol.NewRecordSignal;
 import org.eclipse.agail.device.base.AgileBLEDevice;
 import org.eclipse.agail.device.base.SensorUuid;
+import org.eclipse.agail.exception.AgileNoResultException;
+import org.eclipse.agail.object.DeviceComponent;
 import org.eclipse.agail.object.DeviceDefinition;
 import org.eclipse.agail.object.DeviceOverview;
-import org.eclipse.agail.object.RecordObject;
-import org.eclipse.agail.object.DeviceComponent;
-import org.eclipse.agail.exception.AgileNoResultException;
+import org.freedesktop.dbus.exceptions.DBusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
-	protected Logger logger = LoggerFactory.getLogger(HumiTempDevice.class);
+public class HumiTemp extends AgileBLEDevice implements Device {
+	protected Logger logger = LoggerFactory.getLogger(HumiTemp.class);
 	protected static final Map<String, SensorUuid> sensors = new HashMap<String, SensorUuid>();
-	
-	private static final String Temperature = "Temperature";
-	private static final String Humidity = "Humidity";
+	private static final String TEMPERATURE = "Temperature";
+	private static final String HUMIDITY = "Humidity";
 
 	{
-		subscribedComponents.put(Temperature, 0);
-		subscribedComponents.put(Humidity, 0);
+		subscribedComponents.put(TEMPERATURE, 0);
+		subscribedComponents.put(HUMIDITY, 0);
 	}
 
- 	{
-		profile.add(new DeviceComponent(Temperature, ""));
-		profile.add(new DeviceComponent(Humidity, ""));
+	{
+		profile.add(new DeviceComponent(TEMPERATURE, "Degree celsius (°C)"));
+		profile.add(new DeviceComponent(HUMIDITY, "Relative humidity (%RH)"));
 	}
- 
-
- 	static {
-		sensors.put(Temperature, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
-		sensors.put(Humidity, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
+	
+	static {
+		sensors.put(TEMPERATURE, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
+		sensors.put(HUMIDITY, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
 	}
 
 	public static boolean Matches(DeviceOverview d) {
@@ -61,12 +57,16 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 
 	public static String deviceTypeName = "HumiTemp Sensor Tag";
 
-	public HumiTempDevice(DeviceOverview deviceOverview) throws DBusException {
+	public HumiTemp(DeviceOverview deviceOverview) throws DBusException {
 		super(deviceOverview);
 	}
 
-
-	public HumiTempDevice(DeviceDefinition devicedefinition) throws DBusException {
+	/**
+	 * 
+	 * @param devicedefinition
+	 * @throws DBusException
+	 */
+	public HumiTemp(DeviceDefinition devicedefinition) throws DBusException {
 		super(devicedefinition);
 	}
 
@@ -74,18 +74,15 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 	public void Connect() throws DBusException {
 		super.Connect();
 		for (String componentName : subscribedComponents.keySet()) {
-			logger.info("HumiTemp Connect: " + componentName);
-			//DeviceRead(componentName);
 			if (subscribedComponents.get(componentName) > 0) {
 				logger.info("Resubscribing to {}", componentName);
 				deviceProtocol.Subscribe(address, getReadValueProfile(componentName));
 			}
 		}
 	}
-
-
+	
 	@Override
-	protected String DeviceRead(String componentName) {
+	public String DeviceRead(String componentName) {
 		logger.info("HumiTemp DeviceRead: "+ componentName);
 		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
 			if (isConnected()) {
@@ -108,7 +105,34 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 		throw new AgileNoResultException("Unable to read "+componentName);
 	}
 
-	
+	/*
+	 * TODO - enable for humitemp as this is how it seems to work best generally
+	public String NotificationRead(String componentName) {
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+				if (isSensorSupported(componentName.trim())) {
+					try {
+						deviceProtocol.Write(address, getEnableSensorProfile(componentName), TURN_ON_SENSOR);
+						byte[] period = { 100 };
+						deviceProtocol.Write(address, getFrequencyProfile(componentName), period);
+						byte[] result = deviceProtocol.NotificationRead(address, getReadValueProfile(componentName));
+						return formatReading(componentName, result);
+					} catch (DBusException e) {
+						e.printStackTrace();
+					}
+				} else {
+					throw new AgileNoResultException("Sensor not supported:" + componentName);
+				}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
+		throw new AgileNoResultException("Unable to read " + componentName);
+	}
+	*/
+
 	@Override
 	public synchronized void Subscribe(String componentName) {
 		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
@@ -177,6 +201,10 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 	}
 
 	// =======================Utility methods===========================
+	@Override
+	protected boolean isSensorSupported(String sensorName) {
+		return sensors.containsKey(sensorName);
+	}
 
 	private Map<String, String> getReadValueProfile(String sensorName) {
 		Map<String, String> profile = new HashMap<String, String>();
@@ -191,35 +219,13 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 	}
 
 	@Override
-	protected boolean isSensorSupported(String sensorName) {
-		return sensors.containsKey(sensorName);
-	}
-
-	/**
-	 * Checks if there is another active subscription on the given component of
-	 * the device
-	 * 
-	 * @param componentName
-	 * @return
-	 */
-	@Override
-	protected boolean hasOtherActiveSubscription(String componentName) {
-		for (String component : subscribedComponents.keySet()) {
-			if (subscribedComponents.get(component) > 0) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	@Override
 	protected String formatReading(String componentName, byte[] readData) {
 		String value = "";
 		switch (componentName) {
-			case Temperature:
+			case TEMPERATURE:
 				value = Double.toString(Math.pow(-1, readData[0] + 2) * (readData[1]  + readData[2] / 10.0));
 				return value;
-			case Humidity:	
+			case HUMIDITY:	
 				value = Double.toString(readData[4] + readData[5] / 10.0);
 				return value;
 		}
@@ -227,75 +233,11 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 	}
 
 	/**
-
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	protected void addNewRecordSignalHandler() {
-		logger.info("HumiTemp addNewRecordSignalHandler");	
-		try {
-			if (newRecordSigHanlder == null && connection != null) {
- 				newRecordSigHanlder = new DBusSigHandler<Protocol.NewRecordSignal>() {
-					@Override
-					public void handle(NewRecordSignal sig) {
-						if (sig.address.equals(address)) {
- 							for(String componentName : getComponentNames(sig.profile)){
- 								String readVal = formatReading(componentName, sig.record);
- 								if (Float.parseFloat(readVal) != 0.0) {
- 									RecordObject recObj = new RecordObject(deviceID, componentName,
- 											formatReading(componentName, sig.record), getMeasurementUnit(componentName), "",
- 											System.currentTimeMillis());
- 									data = recObj;
- 									logger.info("Device notification component {} value {}", componentName, recObj.value);
- 									lastReadStore.put(componentName, recObj);
- 									try {
- 										Device.NewSubscribeValueSignal newRecordSignal = new Device.NewSubscribeValueSignal(
- 												AGILE_NEW_RECORD_SUBSCRIBE_SIGNAL_PATH, recObj);
- 										connection.sendSignal(newRecordSignal);
- 									} catch (DBusException e) {
- 										e.printStackTrace();
- 									}
- 								}
- 							}
-						}
-					}
-				};
-				connection.addSigHandler(Protocol.NewRecordSignal.class, newRecordSigHanlder);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
-	/**
-	 * Given the profile of the component returns the list of component names
+	 * Given the profile of the component returns the name of the sensor
 	 * 
 	 * @param uuid
 	 * @return
 	 */
- 	protected List<String> getComponentNames(Map<String, String> profile) {
-		List<String> ret = new ArrayList<String>();
-		String serviceUUID = profile.get(GATT_SERVICE);
-		String charValueUuid = profile.get(GATT_CHARACTERSTICS);
-		for (Entry<String, SensorUuid> su : sensors.entrySet()) {
-			if (su.getValue().serviceUuid.equals(serviceUUID) && su.getValue().charValueUuid.equals(charValueUuid)) {
-				ret.add(su.getKey());
-			}
-		}
-		return ret;
-	}
- 	
- 	@Override
-	protected String getMeasurementUnit(String sensor) {
- 		return "";
- 	}
-
-  /**
-   * Given the profile of the component returns the name of the sensor
-   * 
-   * @param uuid
-   * @return
-   */
 	@Override
 	protected String getComponentName(Map<String, String> profile) {
 		String serviceUUID = profile.get(GATT_SERVICE);
@@ -306,5 +248,15 @@ public abstract class HumiTempDevice extends AgileBLEDevice implements Device {
 			}
 		}
 		return null;
+	}
+
+	private byte[] getBytes(String payload) {
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+		output.write(Byte.valueOf(payload));
+
+		byte[] bytes = output.toByteArray();
+
+		return bytes;
 	}
 }
