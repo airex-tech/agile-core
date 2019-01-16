@@ -244,6 +244,25 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 			throw new AgileNoResultException("Protocol not supported: " + protocol);
 		}
 	}
+	
+	@Override
+	public void Execute(String commandId) {
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+
+				try {
+					// deviceProtocol.Write(address, getEnableSensorProfile(IOCOMPONENTS), TURN_ON_SENSOR);
+					// deviceProtocol.Write(address, getReadValueProfile(IOCOMPONENTS), commands.get(commandId));
+				} catch (Exception ex) {
+					logger.error("Exception occured in Execute: " + ex);
+				}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
+	}
 
 	@Override
 	public List<String> Commands() {
