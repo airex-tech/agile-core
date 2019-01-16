@@ -33,6 +33,9 @@ import org.slf4j.LoggerFactory;
 public class HumiTemp extends AgileBLEDevice implements Device {
 	protected Logger logger = LoggerFactory.getLogger(HumiTemp.class);
 	protected static final Map<String, SensorUuid> sensors = new HashMap<String, SensorUuid>();
+	protected static final Map<String, byte[]> commands = new HashMap<String, byte[]>();
+	private static final byte[] TURN_ON_SENSOR = { 0X01 };
+	private static final byte[] TURN_OFF_SENSOR = { 0X00 };
 	private static final String TEMPERATURE = "Temperature";
 	private static final String HUMIDITY = "Humidity";
 
@@ -45,10 +48,17 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 		profile.add(new DeviceComponent(TEMPERATURE, "Degree celsius (°C)"));
 		profile.add(new DeviceComponent(HUMIDITY, "Relative humidity (%RH)"));
 	}
-	
+
 	static {
-		sensors.put(TEMPERATURE, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
-		sensors.put(HUMIDITY, new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb", "", ""));
+		sensors.put(TEMPERATURE,
+				new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb",
+						"0000aa22-0000-1000-8000-00805f9b34fb", "0000aa23-0000-1000-8000-00805f9b34fb"));
+		sensors.put(HUMIDITY,
+				new SensorUuid("0000aa20-0000-1000-8000-00805f9b34fb", "0000aa21-0000-1000-8000-00805f9b34fb",
+						"0000aa22-0000-1000-8000-00805f9b34fb", "0000aa23-0000-1000-8000-00805f9b34fb"));
+	}
+
+	static {
 	}
 
 	public static boolean Matches(DeviceOverview d) {
@@ -76,37 +86,53 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 		for (String componentName : subscribedComponents.keySet()) {
 			if (subscribedComponents.get(componentName) > 0) {
 				logger.info("Resubscribing to {}", componentName);
+				deviceProtocol.Write(address, getEnableSensorProfile(componentName), TURN_ON_SENSOR);
 				deviceProtocol.Subscribe(address, getReadValueProfile(componentName));
 			}
 		}
 	}
-	
+
 	@Override
-	public String DeviceRead(String componentName) {
-		logger.info("HumiTemp DeviceRead: "+ componentName);
+	public String DeviceRead(String sensorName) {
 		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
 			if (isConnected()) {
-				if (isSensorSupported(componentName.trim())) {
+				if (isSensorSupported(sensorName.trim())) {
 					try {
-						byte[] result = deviceProtocol.Read(address, getReadValueProfile(componentName));
-						return formatReading(componentName, result);
-					} catch (DBusException e) {
+						if (!hasOtherActiveSubscription(sensorName)) {
+							// turn on sensor
+							deviceProtocol.Write(address, getEnableSensorProfile(sensorName), TURN_ON_SENSOR);
+						}
+						/**
+						 * The default read data period (frequency) of most of sensor tag sensors is
+						 * 1000ms therefore the first data will be available to read after 1000ms for
+						 * these we call Read method after 1 second
+						 */
+						Thread.sleep(1010);
+						// read value
+						byte[] readValue = deviceProtocol.Read(address, getReadValueProfile(sensorName));
+						if (!hasOtherActiveSubscription(sensorName)) {
+							deviceProtocol.Write(address, getTurnOffSensorProfile(sensorName), TURN_OFF_SENSOR);
+						}
+						return formatReading(sensorName, readValue);
+					} catch (Exception e) {
+						logger.debug("Error in reading value from Sensor {}", e);
 						e.printStackTrace();
 					}
 				} else {
-					throw new AgileNoResultException("Sensor not supported:" + componentName);
+					logger.debug("Sensor not supported: {}", sensorName);
+					return null;
 				}
 			} else {
-				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+				logger.debug("BLE Device not connected: {}", deviceName);
+				return null;
 			}
 		} else {
-			throw new AgileNoResultException("Protocol not supported: " + protocol);
+			logger.debug("Protocol not supported:: {}", protocol);
+			return null;
 		}
-		throw new AgileNoResultException("Unable to read "+componentName);
+		return null;
 	}
 
-	/*
-	 * TODO - enable for humitemp as this is how it seems to work best generally
 	public String NotificationRead(String componentName) {
 		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
 			if (isConnected()) {
@@ -131,21 +157,29 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 		}
 		throw new AgileNoResultException("Unable to read " + componentName);
 	}
-	*/
 
 	@Override
 	public synchronized void Subscribe(String componentName) {
+		logger.info("Subscribe to {}", componentName);
 		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
 			if (isConnected()) {
 				if (isSensorSupported(componentName.trim())) {
 					try {
-						if (!hasOtherActiveSubscription(componentName)) {
-							deviceProtocol.Subscribe(address, getReadValueProfile(componentName));
+						if (!hasOtherActiveSubscription()) {
 							addNewRecordSignalHandler();
 						}
-						logger.info("HumiTemp Subscribe");
+						if (!hasOtherActiveSubscription(componentName)) {
+							deviceProtocol.Write(address, getEnableSensorProfile(componentName), TURN_ON_SENSOR);
+							/*
+							 * Setting the period on the Pressure sensor was not working. Since we are
+							 * anyway using the default value, keep this disabled. TODO: verify pressure
+							 * senosr. byte[] period = { 100 }; deviceProtocol.Write(address,
+							 * getFrequencyProfile(componentName), period);
+							 */
+							deviceProtocol.Subscribe(address, getReadValueProfile(componentName));
+						}
 						subscribedComponents.put(componentName, subscribedComponents.get(componentName) + 1);
-					} catch (Exception e) {
+					} catch (DBusException e) {
 						e.printStackTrace();
 					}
 				} else {
@@ -161,13 +195,19 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 
 	@Override
 	public synchronized void Unsubscribe(String componentName) throws DBusException {
+		logger.info("Unsubscribe from {}", componentName);
 		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
 			if (isConnected()) {
 				if (isSensorSupported(componentName.trim())) {
 					try {
 						subscribedComponents.put(componentName, subscribedComponents.get(componentName) - 1);
 						if (!hasOtherActiveSubscription(componentName)) {
+							// disable notification
 							deviceProtocol.Unsubscribe(address, getReadValueProfile(componentName));
+							// turn off sensor
+							deviceProtocol.Write(address, getTurnOffSensorProfile(componentName), TURN_OFF_SENSOR);
+						}
+						if (!hasOtherActiveSubscription()) {
 							removeNewRecordSignalHandler();
 						}
 					} catch (Exception e) {
@@ -186,18 +226,49 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 
 	@Override
 	public void Write(String componentName, String payload) {
-		logger.debug("Device. Write not implemented");
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+				try {
+					if(payload.equals("0")) {
+						deviceProtocol.Write(address, getEnableSensorProfile(componentName), TURN_OFF_SENSOR);
+					} else {
+						deviceProtocol.Write(address, getEnableSensorProfile(componentName), TURN_ON_SENSOR);
+					}
+				} catch (Exception ex) {
+					logger.error("Exception occured in Write: " + ex);
+				}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
 	}
 
 	@Override
-	public void Execute(String command) {
-		logger.debug("Device. Execute not implemented");
+	public void Execute(String commandId) {
+		if ((protocol.equals(BLUETOOTH_LOW_ENERGY)) && (deviceProtocol != null)) {
+			if (isConnected()) {
+
+				try {
+					deviceProtocol.Write(address, getEnableSensorProfile(IOCOMPONENTS), TURN_ON_SENSOR);
+					deviceProtocol.Write(address, getReadValueProfile(IOCOMPONENTS), commands.get(commandId));
+				} catch (Exception ex) {
+					logger.error("Exception occured in Execute: " + ex);
+				}
+			} else {
+				throw new AgileNoResultException("BLE Device not connected: " + deviceName);
+			}
+		} else {
+			throw new AgileNoResultException("Protocol not supported: " + protocol);
+		}
+
 	}
 
 	@Override
-	public List<String> Commands(){
-		logger.debug("Device. Commands not implemented");
-		return null;
+	public List<String> Commands() {
+		List<String> commandList = new ArrayList<>(commands.keySet());
+		return commandList;
 	}
 
 	// =======================Utility methods===========================
@@ -206,18 +277,59 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 		return sensors.containsKey(sensorName);
 	}
 
+	private Map<String, String> getEnableSensorProfile(String sensorName) {
+		Map<String, String> profile = new HashMap<String, String>();
+		SensorUuid s = sensors.get(sensorName);
+		if (s != null) {
+			profile.put(GATT_SERVICE, s.serviceUuid);
+			profile.put(GATT_CHARACTERSTICS, s.charConfigUuid);
+		}
+		return profile;
+	}
+
 	private Map<String, String> getReadValueProfile(String sensorName) {
 		Map<String, String> profile = new HashMap<String, String>();
 		SensorUuid s = sensors.get(sensorName);
 		if (s != null) {
 			profile.put(GATT_SERVICE, s.serviceUuid);
 			profile.put(GATT_CHARACTERSTICS, s.charValueUuid);
-			logger.info("HumiTemp Gatt Service: "+s.serviceUuid);
-			logger.info("HumiTemp Gatt Characteristic: "+s.charValueUuid);
 		}
 		return profile;
 	}
 
+	private Map<String, String> getTurnOffSensorProfile(String sensorName) {
+		Map<String, String> profile = new HashMap<String, String>();
+		SensorUuid s = sensors.get(sensorName);
+		if (s != null) {
+			profile.put(GATT_SERVICE, s.serviceUuid);
+			profile.put(GATT_CHARACTERSTICS, s.charConfigUuid);
+		}
+		return profile;
+	}
+
+	private Map<String, String> getFrequencyProfile(String sensorName) {
+		Map<String, String> profile = new HashMap<String, String>();
+		SensorUuid s = sensors.get(sensorName);
+		if (s != null) {
+			profile.put(GATT_SERVICE, s.serviceUuid);
+			profile.put(GATT_CHARACTERSTICS, s.charFreqUuid);
+		}
+		return profile;
+	}
+
+	/**
+	 *
+	 * The sensor service returns the data in an encoded format which can be found
+	 * in the wiki(http://processors.wiki.ti.com/index.php/SensorTag_User_Guide#
+	 * IR_Temperature_Sensor). Convert the raw sensor reading value format to human
+	 * understandable value and print it.
+	 * 
+	 * @param sensorName
+	 *            Name of the sensor to read value from
+	 * @param readingValue
+	 *            the raw value read from the sensor
+	 * @return
+	 */
 	@Override
 	protected String formatReading(String componentName, byte[] readData) {
 		String value = "";
@@ -230,6 +342,49 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 				return value;
 		}
 		return "0";
+	}
+
+	/**
+	 * Gyroscope, Magnetometer, Barometer, IR temperature all store 16 bit two's
+	 * complement values in the format LSB MSB.
+	 *
+	 * This function extracts these 16 bit two's complement values.
+	 */
+	private static Integer shortSignedAtOffset(byte[] value, int offset) {
+		Integer lowerByte = Byte.toUnsignedInt(value[offset]);
+		Integer upperByte = Byte.toUnsignedInt(value[offset + 1]); // Note:
+		return (upperByte << 8) + lowerByte;
+	}
+
+	/**
+	 * Converts temperature into degree Celsius
+	 *
+	 * @param raw
+	 * @return
+	 */
+	private float convertCelsius(int raw) {
+		return raw / 128f;
+	}
+
+	/**
+	 * Formats humidity value according to SensorTag WIKI
+	 * 
+	 * @param raw
+	 * @return
+	 */
+	private float convertHumidity(int raw) {
+		return (((float) raw) / 65536) * 100;
+	}
+
+	private float convertPressure(int raw) {
+		return raw / 100.0f;
+	}
+
+	private float convertOpticalRead(int raw) {
+		int e = (raw & 0x0F000) >> 12; // Interim value in calculation
+		int m = raw & 0x0FFF; // Interim value in calculation
+
+		return (float) (m * (0.01 * Math.pow(2.0, e)));
 	}
 
 	/**
