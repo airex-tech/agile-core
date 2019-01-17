@@ -109,7 +109,7 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 						 */
 						Thread.sleep(1010);
 						// read value
-						byte[] readValue = deviceProtocol.Read(address, getReadValueProfile(sensorName));
+						byte[] readValue = deviceProtocol.NotificationRead(address, getReadValueProfile(sensorName));
 						if (!hasOtherActiveSubscription(sensorName)) {
 							deviceProtocol.Write(address, getTurnOffSensorProfile(sensorName), TURN_OFF_SENSOR);
 						}
@@ -275,7 +275,7 @@ public class HumiTemp extends AgileBLEDevice implements Device {
 	protected boolean isSensorSupported(String sensorName) {
 		return sensors.containsKey(sensorName);
 	}
-
+	
 	private Map<String, String> getEnableSensorProfile(String sensorName) {
 		Map<String, String> profile = new HashMap<String, String>();
 		SensorUuid s = sensors.get(sensorName);
